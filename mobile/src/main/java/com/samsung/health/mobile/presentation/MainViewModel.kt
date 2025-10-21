@@ -3,7 +3,7 @@ package com.samsung.health.mobile.presentation
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.database.DatabaseReference //  MODIFIED: Import changed
 import com.samsung.health.data.TrackedData
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -24,13 +24,12 @@ data class UiState(
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    private val firestore: FirebaseFirestore
+    private val databaseReference: DatabaseReference //  MODIFIED: Injected DatabaseReference
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(UiState())
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
-    // Thread-safe buffer to hold incoming data records for one second.
     private val dataBuffer = Collections.synchronizedList(mutableListOf<TrackedData>())
     private var tickerJob: Job? = null
 
@@ -38,16 +37,17 @@ class MainViewModel @Inject constructor(
         startDataProcessingTicker()
     }
 
-    // Called from MainActivity with each new data packet from the watch.
+    // This function remained unchanged
     fun onNewDataReceived(data: List<TrackedData>) {
         dataBuffer.addAll(data)
     }
 
+    // This function remained unchanged
     private fun startDataProcessingTicker() {
-        if (tickerJob?.isActive == true) return // Ensure only one ticker is running
+        if (tickerJob?.isActive == true) return
         tickerJob = viewModelScope.launch {
             while (true) {
-                delay(1000) // Process data every 1 second
+                delay(1000)
                 processAndSaveBufferedData()
             }
         }
@@ -56,14 +56,13 @@ class MainViewModel @Inject constructor(
     private fun processAndSaveBufferedData() {
         if (dataBuffer.isEmpty()) return
 
-        // Create a snapshot of the buffer and clear the original for the next second.
+        // This snapshot and averaging logic remained unchanged
         val snapshot = synchronized(dataBuffer) {
             val list = ArrayList(dataBuffer)
             dataBuffer.clear()
             list
         }
 
-        // --- AVERAGING LOGIC ---
         val avgHr = snapshot.mapNotNull { it.hr }.average().takeIf { !it.isNaN() }
         val avgSpo2 = snapshot.mapNotNull { it.spo2 }.average().toFloat().takeIf { !it.isNaN() }
         val avgSkinTemp = snapshot.mapNotNull { it.skinTemp }.average().toFloat().takeIf { !it.isNaN() }
@@ -91,23 +90,26 @@ class MainViewModel @Inject constructor(
             accX = avgAccX,
             accY = avgAccY,
             accZ = avgAccZ,
-            // IBI is a list of discrete intervals, so we just take the last valid one.
             ibi = snapshot.lastOrNull()?.ibi ?: arrayListOf()
         )
 
         _uiState.update { it.copy(latestAveragedData = averagedRecord) }
-        saveToFirestore(averagedRecord)
+
+        //  MODIFIED: Call to the new save function
+        saveToRealtimeDatabase(averagedRecord)
     }
 
-    private fun saveToFirestore(data: TrackedData) {
+    //  REPLACED: This function replaced the old saveToFirestore()
+    private fun saveToRealtimeDatabase(data: TrackedData) {
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true) }
             try {
-                // Add the data object as a new document to the "healthData" collection
-                firestore.collection("healthData").add(data).await()
-                Log.d("Firestore", "Successfully saved data: ${data.timestamp}")
+                // .push() creates a new unique, time-stamped key for each entry.
+                // .setValue() writes the data object to that new key.
+                databaseReference.push().setValue(data).await()
+                Log.d("RTDB", "Successfully saved data: ${data.timestamp}")
             } catch (e: Exception) {
-                Log.e("Firestore", "Error saving data", e)
+                Log.e("RTDB", "Error saving data", e)
             } finally {
                 _uiState.update { it.copy(isSaving = false) }
             }
@@ -116,6 +118,6 @@ class MainViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        tickerJob?.cancel() // Clean up the coroutine when ViewModel is destroyed
+        tickerJob?.cancel()
     }
 }

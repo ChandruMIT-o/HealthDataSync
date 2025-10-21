@@ -64,7 +64,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended:<your_compose_version>")
     implementation platform('com.google.firebase:firebase-bom:34.4.0')
     implementation 'com.google.firebase:firebase-analytics'
-    implementation 'com.google.firebase:firebase-firestore'
+    implementation 'com.google.firebase:firebase-database'
     // hilt
     implementation "com.google.dagger:hilt-android:$hilt_version"
     ksp "com.google.dagger:hilt-compiler:$hilt_version"
