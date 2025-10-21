@@ -1,0 +1,51 @@
+# ===================================
+# Added by Android Studio
+# ===================================
+/common
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/log
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+
+# ===================================
+# Google Services
+# ===================================
+# Exclude the private Firebase config file
+google-services.json
+
+# ===================================
+# KSP (Kotlin Symbol Processing)
+# ===================================
+/build/generated/ksp
+
+# ===================================
+# Local Build Outputs
+# ===================================
+*.apk
+*.aab
+*.ap_
+*.aar
+*.dex
+/build/
+/app/build/
+/wear/build/
+/mobile/build/
+/common/build/
+
+# ===================================
+# Keystore files
+# ===================================
+# Do not commit your signing keys!
+*.jks
+*.keystore

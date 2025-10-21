@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Health Data Receiver</string>
+    <string name="waiting_for_data">Waiting for data from watch...</string>
+</resources>
