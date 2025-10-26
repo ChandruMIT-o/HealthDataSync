@@ -20,9 +20,7 @@ import androidx.compose.ui.unit.sp
 import androidx.wear.compose.material.Button
 import androidx.wear.compose.material.CircularProgressIndicator
 import androidx.wear.compose.material.MaterialTheme
-import androidx.wear.compose.material.Switch
 import androidx.wear.compose.material.Text
-import androidx.wear.compose.material.ToggleChip
 import com.samsung.android.service.health.tracking.data.HealthTrackerType
 import com.samsung.health.hrdatatransfer.data.HealthDataRecord
 import com.samsung.health.hrdatatransfer.presentation.ConnectionState
@@ -35,7 +33,6 @@ import java.util.Locale
 fun MainScreen(
     uiState: UiState,
     permissionDenied: Boolean,
-    onToggleTracker: (HealthTrackerType) -> Unit,
     onStartTracking: () -> Unit,
     onStopTracking: () -> Unit
 ) {
@@ -66,14 +63,8 @@ fun MainScreen(
                             style = MaterialTheme.typography.body1,
                             textAlign = TextAlign.Center
                         )
-                    } else {
-                        SensorToggleList(
-                            uiState = uiState,
-                            onToggleTracker = onToggleTracker
-                        )
                     }
                 }
-
                 item {
                     Spacer(modifier = Modifier.height(16.dp))
                     ControlButtons(
@@ -82,7 +73,6 @@ fun MainScreen(
                         onStopTracking = onStopTracking
                     )
                 }
-
                 if (uiState.isTracking && uiState.latestData != null) {
                     item {
                         Spacer(modifier = Modifier.height(16.dp))
@@ -91,31 +81,6 @@ fun MainScreen(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun SensorToggleList(
-    uiState: UiState,
-    onToggleTracker: (HealthTrackerType) -> Unit
-) {
-    Text("Select Sensors", fontWeight = FontWeight.Bold)
-    Spacer(modifier = Modifier.height(8.dp))
-    uiState.availableSensors.forEach { trackerType ->
-        ToggleChip(
-            modifier = Modifier.fillMaxWidth(),
-            checked = uiState.selectedSensors.contains(trackerType),
-            onCheckedChange = { onToggleTracker(trackerType) },
-            label = { Text(trackerType.name.replace("_CONTINUOUS", "")) },
-            toggleControl = {
-                Switch(
-                    checked = uiState.selectedSensors.contains(trackerType),
-                    enabled = !uiState.isTracking
-                )
-            },
-            enabled = !uiState.isTracking
-        )
-        Spacer(modifier = Modifier.height(4.dp))
     }
 }
 
@@ -132,13 +97,15 @@ private fun ControlButtons(
     ) {
         Button(
             onClick = if (uiState.isTracking) onStopTracking else onStartTracking,
-            enabled = uiState.connectionState == ConnectionState.Connected && uiState.selectedSensors.isNotEmpty()
+            // Enable button only when connected and not tracking, or when tracking
+            enabled = uiState.connectionState == ConnectionState.Connected
         ) {
             Text(if (uiState.isTracking) "Stop" else "Stream")
         }
     }
 }
-private val timeFormatter = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault())
+
+private val timeFormatter = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
 
 @Composable
 private fun DataDisplay(healthDataRecord: HealthDataRecord) {
@@ -149,18 +116,22 @@ private fun DataDisplay(healthDataRecord: HealthDataRecord) {
         Text("Latest Data", fontWeight = FontWeight.Bold, fontSize = 16.sp)
         Spacer(modifier = Modifier.height(8.dp))
         Text("Time: ${timeFormatter.format(Date(healthDataRecord.timestamp))}")
-        healthDataRecord.hr?.let { Text("HR: $it bpm") }
-        healthDataRecord.ibi?.let { if (it.isNotEmpty()) Text("IBI: ${it.joinToString()}") }
-        healthDataRecord.spo2?.let { Text("SpO2: %.1f %%".format(it)) }
-        healthDataRecord.ecg?.let { Text("ECG: %.2f µV".format(it)) }
-        healthDataRecord.bvp?.let { Text("BVP: %.2f".format(it)) }
-        healthDataRecord.ppgGreen?.let { Text("PPG Green: $it") }
-        healthDataRecord.ppgRed?.let { Text("PPG Red: $it") }
-        healthDataRecord.ppgIr?.let { Text("PPG IR: $it") }
-        healthDataRecord.accX?.let { Text("Acc X: $it") }
-        healthDataRecord.accY?.let { Text("Acc Y: $it") }
-        healthDataRecord.accZ?.let { Text("Acc Z: $it") }
-        healthDataRecord.skinTemp?.let { Text("Skin Temp: %.2f °C".format(it)) }
-        healthDataRecord.eda?.let { Text("EDA: %.3f µS".format(it)) }
+
+        // --- Display "---" if data is null or 0 (for 0.0f) ---
+        Text("HR: ${healthDataRecord.hr?.takeIf { it > 0 } ?: "---"} bpm")
+        Text("IBI: ${healthDataRecord.ibi?.joinToString() ?: "---"}")
+
+        // --- SPO2 REMOVED ---
+
+        Text("ECG: ${healthDataRecord.ecg?.let { "%.2f µV".format(it) } ?: "---"}")
+        Text("PPG Green: ${healthDataRecord.ppgGreen?.takeIf { it > 0 } ?: "---"}")
+        Text("PPG Red: ${healthDataRecord.ppgRed?.takeIf { it > 0 } ?: "---"}")
+        Text("PPG IR: ${healthDataRecord.ppgIr?.takeIf { it > 0 } ?: "---"}")
+        Text("Acc X: ${healthDataRecord.accX ?: "---"}")
+        Text("Acc Y: ${healthDataRecord.accY ?: "---"}")
+        Text("Acc Z: ${healthDataRecord.accZ ?: "---"}")
+        Text("Skin Temp: ${healthDataRecord.skinTemp?.takeIf { it > 0.0f }?.let { "%.2f °C".format(it) } ?: "---"}")
+        Text("EDA: ${healthDataRecord.eda?.let { "%.3f µS".format(it) } ?: "---"}")
     }
 }
+

@@ -6,7 +6,7 @@ import com.samsung.android.service.health.tracking.ConnectionListener
 import com.samsung.android.service.health.tracking.HealthTrackerException
 import com.samsung.android.service.health.tracking.HealthTrackingService
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.CoroutineScope
+// import kotlinx.coroutines.CoroutineScope // <-- REMOVED
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.flow.callbackFlow
@@ -18,7 +18,7 @@ private const val TAG = "HealthTrackingServiceConnection"
 @Singleton
 class HealthTrackingServiceConnection @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val coroutineScope: CoroutineScope // This dependency is back
+    // private val coroutineScope: CoroutineScope // <-- REMOVED
 ) {
     private var healthTrackingService: HealthTrackingService? = null
 
@@ -26,20 +26,22 @@ class HealthTrackingServiceConnection @Inject constructor(
         val connectionListener = object : ConnectionListener {
             override fun onConnectionSuccess() {
                 Log.i(TAG, "onConnectionSuccess()")
-                coroutineScope.runCatching { trySendBlocking(ConnectionMessage.ConnectionSuccessMessage) }
+                // We are inside a ProducerScope, so we can call trySendBlocking directly
+                runCatching { trySendBlocking(ConnectionMessage.ConnectionSuccessMessage) }
             }
 
             override fun onConnectionFailed(exception: HealthTrackerException?) {
                 Log.e(TAG, "onConnectionFailed()", exception)
-                coroutineScope.runCatching { trySendBlocking(ConnectionMessage.ConnectionFailedMessage(exception)) }
+                runCatching { trySendBlocking(ConnectionMessage.ConnectionFailedMessage(exception)) }
             }
 
             override fun onConnectionEnded() {
                 Log.w(TAG, "onConnectionEnded()")
-                coroutineScope.runCatching { trySendBlocking(ConnectionMessage.ConnectionEndedMessage) }
-                close()
+                runCatching { trySendBlocking(ConnectionMessage.ConnectionEndedMessage) }
+                close() // Close the flow when the connection ends
             }
         }
+
         Log.d(TAG, "Initializing and connecting HealthTrackingService...")
         healthTrackingService = HealthTrackingService(connectionListener, context)
         healthTrackingService!!.connectService()

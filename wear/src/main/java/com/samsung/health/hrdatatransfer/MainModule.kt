@@ -11,9 +11,9 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import kotlinx.coroutines.CoroutineScope
+// import kotlinx.coroutines.CoroutineScope // <-- REMOVED
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
+// import kotlinx.coroutines.SupervisorJob // <-- REMOVED
 import javax.inject.Singleton
 
 @Module
@@ -23,7 +23,6 @@ abstract class RepositoryModule {
     @Singleton
     abstract fun bindTrackingRepository(impl: TrackingRepositoryImpl): TrackingRepository
 
-    // Add these two bindings
     @Binds
     @Singleton
     abstract fun bindMessageRepository(impl: MessageRepositoryImpl): MessageRepository
@@ -36,14 +35,15 @@ abstract class RepositoryModule {
 @Module
 @InstallIn(SingletonComponent::class)
 object MainModule {
+
+    /* // --- THIS IS NO LONGER NEEDED ---
     @Provides
     @Singleton
     fun provideApplicationCoroutineScope(): CoroutineScope {
-        // Reverting to Dispatchers.Main, just like the original sample
         return CoroutineScope(SupervisorJob() + Dispatchers.Main)
     }
+    */ // --- END REMOVED BLOCK ---
 
-    // The rest of your providers are correct and do not need to change
     @Provides
     @Singleton
     fun provideCapabilityClient(@ApplicationContext context: Context): CapabilityClient {

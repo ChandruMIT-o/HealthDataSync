@@ -1,4 +1,5 @@
 package com.samsung.health.hrdatatransfer.data
+
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -14,8 +15,7 @@ data class HealthDataRecord(
     var ibi: ArrayList<Int>? = null,
     var skinTemp: Float? = null,
     var eda: Float? = null,
-    // --- New Fields Added ---
     var ecg: Float? = null,
-    var spo2: Float? = null,
-    var bvp: Float? = null
+    var spo2: Float? = null
+    // Removed bvp: Float? = null
 )
