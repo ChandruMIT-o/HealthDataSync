@@ -1,3 +1,4 @@
+// --- src\main\java\com\samsung\health\mobile\presentation\ui\DataTable.kt ---
 package com.samsung.health.mobile.presentation.ui
 
 import androidx.compose.animation.Crossfade
@@ -23,20 +24,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.samsung.health.data.TrackedData
+import com.samsung.health.data.TrackedData // Make sure this class has your new fields
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-// A data class to structure our table rows
 private data class TableRowData(val label: String, val value: String)
 
 @Composable
 fun DataTable(result: TrackedData) {
-    // This logic now conditionally builds the list of rows to display.
-    // `remember` re-runs this block only when `result` changes.
     val dataRows = remember(result) {
-        // If HR is 0 or null, only show basic data.
         if (result.hr == null || result.hr == 0) {
             buildList {
                 add(TableRowData("Timestamp", SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()).format(Date(result.timestamp))))
@@ -46,16 +43,20 @@ fun DataTable(result: TrackedData) {
                 result.accZ?.let { add(TableRowData("Accel Z", it.toString())) }
             }
         } else {
-            // Otherwise, show all available data.
             buildList {
                 add(TableRowData("Timestamp", SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()).format(Date(result.timestamp))))
                 result.hr?.let { add(TableRowData("Heart Rate", "$it bpm")) }
                 result.ibi?.let { if (it.isNotEmpty()) add(TableRowData("IBI", it.joinToString())) }
-                result.spo2?.let { add(TableRowData("SpO2", "%.1f %%".format(it))) }
+
+                // --- NEW FIELDS ADDED HERE ---
+                result.respirationRate?.let { add(TableRowData("Resp Rate", "%.1f br/min".format(it))) }
+                result.spo2?.let { add(TableRowData("SpO2 (est)", "%.1f %%".format(it))) }
+                result.bvp?.let { add(TableRowData("BVP (sim)", "%.2f".format(it))) }
+                // --- END NEW FIELDS ---
+
                 result.skinTemp?.let { add(TableRowData("Skin Temp", "%.2f °C".format(it))) }
                 result.eda?.let { add(TableRowData("EDA", "%.3f µS".format(it))) }
                 result.ecg?.let { add(TableRowData("ECG (sim)", "%.2f µV".format(it))) }
-                result.bvp?.let { add(TableRowData("BVP (sim)", "%.2f".format(it))) }
                 result.ppgGreen?.let { add(TableRowData("PPG Green", it.toString())) }
                 result.ppgRed?.let { add(TableRowData("PPG Red", it.toString())) }
                 result.ppgIr?.let { add(TableRowData("PPG IR", it.toString())) }
@@ -65,7 +66,6 @@ fun DataTable(result: TrackedData) {
             }
         }
     }
-
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
@@ -73,11 +73,9 @@ fun DataTable(result: TrackedData) {
         ),
         modifier = Modifier
             .fillMaxWidth()
-            // This modifier animates size changes smoothly
             .animateContentSize()
     ) {
         Column(modifier = Modifier.padding(vertical = 8.dp)) {
-            // Table Header
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -87,10 +85,7 @@ fun DataTable(result: TrackedData) {
                 TableCell(text = "Sensor", weight = 1f, isHeader = true)
                 TableCell(text = "Value", weight = 1f, isHeader = true, alignment = TextAlign.End)
             }
-
             Divider(color = Color.Gray.copy(alpha = 0.3f))
-
-            // Table Body - Replaced LazyColumn with a regular Column
             Column {
                 dataRows.forEach { row ->
                     Row(
@@ -101,7 +96,6 @@ fun DataTable(result: TrackedData) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         TableCell(text = row.label, weight = 1f)
-                        // This will animate the text value changes with a fade
                         Crossfade(targetState = row.value, label = "value-crossfade") { value ->
                             TableCell(text = value, weight = 1f, alignment = TextAlign.End)
                         }
@@ -141,4 +135,3 @@ fun RowScope.TableCell(
         textAlign = alignment
     )
 }
-

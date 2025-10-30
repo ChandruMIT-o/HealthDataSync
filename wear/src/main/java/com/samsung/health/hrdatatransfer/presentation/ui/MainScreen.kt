@@ -97,7 +97,6 @@ private fun ControlButtons(
     ) {
         Button(
             onClick = if (uiState.isTracking) onStopTracking else onStartTracking,
-            // Enable button only when connected and not tracking, or when tracking
             enabled = uiState.connectionState == ConnectionState.Connected
         ) {
             Text(if (uiState.isTracking) "Stop" else "Stream")
@@ -116,12 +115,14 @@ private fun DataDisplay(healthDataRecord: HealthDataRecord) {
         Text("Latest Data", fontWeight = FontWeight.Bold, fontSize = 16.sp)
         Spacer(modifier = Modifier.height(8.dp))
         Text("Time: ${timeFormatter.format(Date(healthDataRecord.timestamp))}")
-
-        // --- Display "---" if data is null or 0 (for 0.0f) ---
         Text("HR: ${healthDataRecord.hr?.takeIf { it > 0 } ?: "---"} bpm")
         Text("IBI: ${healthDataRecord.ibi?.joinToString() ?: "---"}")
 
-        // --- SPO2 REMOVED ---
+        // --- NEW FIELDS ADDED HERE ---
+        Text("Resp Rate: ${healthDataRecord.respirationRate?.let { "%.1f br/min".format(it) } ?: "---"}")
+        Text("SpO2 (est): ${healthDataRecord.spo2?.let { "%.1f %%".format(it) } ?: "---"}")
+        Text("BVP (sim): ${healthDataRecord.bvp?.let { "%.2f".format(it) } ?: "---"}")
+        // --- END NEW FIELDS ---
 
         Text("ECG: ${healthDataRecord.ecg?.let { "%.2f µV".format(it) } ?: "---"}")
         Text("PPG Green: ${healthDataRecord.ppgGreen?.takeIf { it > 0 } ?: "---"}")
@@ -134,4 +135,3 @@ private fun DataDisplay(healthDataRecord: HealthDataRecord) {
         Text("EDA: ${healthDataRecord.eda?.let { "%.3f µS".format(it) } ?: "---"}")
     }
 }
-

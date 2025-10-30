@@ -1,50 +1,59 @@
-/*
- * Copyright 2023 Samsung Electronics Co., Ltd. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package com.samsung.health.mobile.data
 
-import android.content.Intent
 import android.util.Log
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.WearableListenerService
-import com.samsung.health.mobile.presentation.MainActivity
+import com.samsung.health.mobile.presentation.ProcessingStateHolder
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 private const val TAG = "DataListenerService"
 private const val MESSAGE_PATH = "/msg"
 
+// ▼▼▼ FIX: Add @AndroidEntryPoint ▼▼▼
+@AndroidEntryPoint
 class DataListenerService : WearableListenerService() {
+
+    // ▼▼▼ FIX: Inject the StateHolder ▼▼▼
+    @Inject
+    lateinit var stateHolder: ProcessingStateHolder
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    // ▲▲▲ END FIX ▲▲▲
 
     override fun onMessageReceived(messageEvent: MessageEvent) {
         super.onMessageReceived(messageEvent)
-
         val value = messageEvent.data.decodeToString()
-        Log.i(TAG, "onMessageReceived(): $value")
+        Log.i(TAG, "onMessageReceived(): ${messageEvent.path}")
+
         when (messageEvent.path) {
             MESSAGE_PATH -> {
-                Log.i(TAG, "Service: message (/msg) received: $value")
-
-                if (value != "") {
-                    startActivity(
-                        Intent(this, MainActivity::class.java)
-                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtra("message", value)
-                    )
+                Log.i(TAG, "Service: message (/msg) received. Posting to inbox.")
+                if (value.isNotEmpty()) {
+                    // ▼▼▼ FIX: Post to the inbox instead of starting a service ▼▼▼
+                    serviceScope.launch {
+                        try {
+                            stateHolder.postData(value)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to post data to inbox", e)
+                        }
+                    }
+                    // ▲▲▲ END FIX ▲▲▲
                 } else {
-                    Log.i(TAG, "value is an empty string")
+                    Log.w(TAG, "Received message with empty value.")
                 }
             }
         }
     }
+
+    // ▼▼▼ FIX: Clean up the coroutine scope ▼▼▼
+    override fun onDestroy() {
+        super.onDestroy()
+        serviceScope.cancel()
+    }
+    // ▲▲▲ END FIX ▲▲▲
 }

@@ -80,6 +80,7 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
     testImplementation "io.mockk:mockk:1.14.4"
     testImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2"
+    implementation 'org.apache.commons:commons-math3:3.6.1'
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
     implementation project(':common')
 }

@@ -1,3 +1,4 @@
+// --- src\main\java\com\samsung\health\hrdatatransfer\data\HealthDataRecord.kt ---
 package com.samsung.health.hrdatatransfer.data
 
 import kotlinx.serialization.Serializable
@@ -16,6 +17,9 @@ data class HealthDataRecord(
     var skinTemp: Float? = null,
     var eda: Float? = null,
     var ecg: Float? = null,
-    var spo2: Float? = null
-    // Removed bvp: Float? = null
+    var spo2: Float? = null,
+
+    // --- NEW FIELDS ---
+    var bvp: Float? = null,
+    var respirationRate: Double? = null
 )
