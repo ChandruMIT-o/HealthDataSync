@@ -39,6 +39,7 @@ import kotlin.math.sqrt
 
 private const val TAG = "TrackingRepositoryImpl"
 private const val SNAPSHOT_INTERVAL_MS = 1000L // 1 Hz
+private const val BATCH_LATENCY_MS = 0L
 private const val DATA_STALE_MS = 60_000L // 1 minute
 
 // --- CONSTANTS FOR PROCESSING ---
@@ -247,6 +248,7 @@ class TrackingRepositoryImpl @Inject constructor(
                     respirationRate = respirationRate
                 )
                 trySendBlocking(snapshot)
+
                 delay(SNAPSHOT_INTERVAL_MS)
             }
         }
@@ -259,6 +261,18 @@ class TrackingRepositoryImpl @Inject constructor(
             activeTrackers.values.forEach { it.unsetEventListener() }
             activeTrackers.clear()
             lastSensorUpdateTimestamps.clear()
+        }
+    }
+
+    override fun flushTrackers() {
+        if (activeTrackers.isEmpty()) return
+        Log.d(TAG, "Service commanded a flush.")
+        try {
+            activeTrackers.values.forEach { tracker ->
+                tracker.flush()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error while flushing trackers", e)
         }
     }
 

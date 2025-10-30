@@ -7,4 +7,5 @@ interface TrackingRepository {
     // The getAvailableTrackers function is now GONE.
     fun track(trackerTypes: Set<HealthTrackerType>): Flow<HealthDataRecord>
     fun stopTracking()
+    fun flushTrackers()
 }

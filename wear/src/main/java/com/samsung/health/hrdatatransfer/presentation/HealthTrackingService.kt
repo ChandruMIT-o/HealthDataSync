@@ -19,6 +19,8 @@ import kotlinx.coroutines.flow.*
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
+import android.os.PowerManager
+import android.content.Context
 
 private const val TAG = "HealthTrackingService"
 private const val NOTIFICATION_ID = 1
@@ -41,14 +43,19 @@ class HealthTrackingService : Service() {
     lateinit var capabilityRepository: CapabilityRepository
     @Inject
     lateinit var trackingStateHolder: TrackingStateHolder // The singleton state holder
+    @Inject
+    lateinit var trackingRepository: TrackingRepository
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    private var wakeLock: PowerManager.WakeLock? = null
 
     private var connectionJob: Job? = null
     private var trackingJob: Job? = null
     private var senderJob: Job? = null
 
     private var phoneNode: Node? = null
+    private val dataBuffer = mutableListOf<HealthDataRecord>()
     private val selectedSensors = setOf(
         HealthTrackerType.ACCELEROMETER_CONTINUOUS,
         HealthTrackerType.HEART_RATE_CONTINUOUS,
@@ -69,6 +76,22 @@ class HealthTrackingService : Service() {
         super.onCreate()
         Log.i(TAG, "Service onCreate")
         startForeground(NOTIFICATION_ID, createNotification())
+
+        // --- Acquire WakeLock ---
+        try {
+            val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+            wakeLock = powerManager.newWakeLock(
+                PowerManager.PARTIAL_WAKE_LOCK,
+                "HealthTracking::MyWakelockTag" // A unique tag for debugging
+            )
+            wakeLock?.setReferenceCounted(false) // We'll manage its lifecycle
+            wakeLock?.acquire() // This forces the CPU to stay on
+            Log.i(TAG, "WakeLock acquired!")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error acquiring WakeLock", e)
+        }
+        // --- End of new code ---
+
         connectToHealthService()
     }
 
@@ -137,16 +160,56 @@ class HealthTrackingService : Service() {
 
     private suspend fun sendDataRecord(record: HealthDataRecord) {
         if (phoneNode == null) {
-            Log.w(TAG, "Cannot send data: phoneNode is null. Retrying find...")
-            findPhoneNode() // Try to find it again
-            if (phoneNode == null) return // Give up if still not found
+            Log.w(TAG, "Phone node is null. Retrying find...")
+            findPhoneNode()
+            if (phoneNode == null) {
+                // PHONE IS DISCONNECTED
+                Log.d(TAG, "Buffering data. Buffer size: ${dataBuffer.size}")
+                dataBuffer.add(record)
+                // We DO NOT flush. This lets the SDK batch sensors and save battery.
+                return
+            }
         }
+
+        // PHONE IS CONNECTED
+        var successfullySent = false
+
+        // --- 1. Try to send the buffer first ---
+        if (dataBuffer.isNotEmpty()) {
+            Log.i(TAG, "Reconnected. Sending buffer of ${dataBuffer.size} records...")
+            val jsonString = Json.encodeToString(dataBuffer)
+
+            // We use the MessageRepository directly to see if it succeeded
+            successfullySent = messageRepository.sendMessage(jsonString, phoneNode!!, MESSAGE_PATH)
+
+            if (successfullySent) {
+                dataBuffer.clear() // Clear buffer on success
+            } else {
+                Log.e(TAG, "Failed to send buffer, will retry.")
+                dataBuffer.add(record) // Add current record to buffer and give up for now
+                return // DO NOT flush
+            }
+        }
+
+        // --- 2. Send the current record ---
         try {
             val dataList = listOf(record)
             val jsonString = Json.encodeToString(dataList)
-            messageRepository.sendMessage(jsonString, phoneNode!!, MESSAGE_PATH)
+            successfullySent = messageRepository.sendMessage(jsonString, phoneNode!!, MESSAGE_PATH)
         } catch (e: Exception) {
             Log.e(TAG, "Error sending data record", e)
+            successfullySent = false
+        }
+
+        // --- 3. Flush sensors ONLY on success ---
+        if (successfullySent) {
+            // IT WORKED! Flush sensors to get the next real-time packet.
+            Log.d(TAG, "Send success, flushing sensors.")
+            trackingRepository.flushTrackers()
+        } else {
+            // IT FAILED! Buffer this record and DO NOT flush.
+            Log.w(TAG, "Send failed, buffering record.")
+            dataBuffer.add(record)
         }
     }
 
@@ -183,6 +246,17 @@ class HealthTrackingService : Service() {
 
     override fun onDestroy() {
         Log.w(TAG, "Service onDestroy")
+
+        // --- Release WakeLock ---
+        wakeLock?.let {
+            if (it.isHeld) {
+                it.release()
+                Log.i(TAG, "WakeLock released.")
+            }
+        }
+        wakeLock = null
+        // --- End of new code ---
+
         // Ensure everything is cleaned up
         trackingJob?.cancel()
         senderJob?.cancel()
