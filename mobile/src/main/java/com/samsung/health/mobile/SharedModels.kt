@@ -1,10 +1,7 @@
+// --- src/main/java/com/samsung/health/mobile/SharedModels.kt ---
 package com.samsung.health.mobile
 
 import kotlinx.serialization.Serializable
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
-import java.nio.charset.StandardCharsets
-import java.util.zip.GZIPInputStream
 
 @Serializable
 data class RawSensorBatch(
@@ -20,4 +17,34 @@ data class RawSensorBatch(
     val accZ: FloatArray,
     val tempTimestamp: Long,
     val skinTemp: FloatArray
+)
+
+data class HealthSnapshot(
+    val timestamp: Long = System.currentTimeMillis(),
+    // Tab 1 Vitals
+    val heartRate: Int = 0,
+    val heartRateHistory: List<Float> = emptyList(),
+    val spo2: Int = 0,
+    val ecgSignal: List<Float> = emptyList(),
+    val accMagnitude: Float = 0f,
+    val skinTemperature: Float = 0f,
+    val respirationRate: Int = 0,
+    val edaValue: Float = 0f,
+    val ibi: Float = 0f,
+
+    // Tab 2 Indices (0.0 - 1.0 Range)
+    val sqi: Float = 0f, // Sleep Quality
+    val sqiHistory: List<Float> = emptyList(),
+
+    val psi: Float = 0f, // Psychosomatic Stress
+    val psiHistory: List<Float> = emptyList(),
+
+    val cvhs: Float = 0f, // Cardiovascular Health
+    val cvhsHistory: List<Float> = emptyList(),
+
+    val cls: Float = 0f, // Cognitive Load
+    val clsHistory: List<Float> = emptyList(),
+
+    val evs: Float = 0f, // Emotional Vitality
+    val evsHistory: List<Float> = emptyList()
 )

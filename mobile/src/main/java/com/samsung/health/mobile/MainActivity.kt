@@ -5,23 +5,31 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material.icons.rounded.Analytics
+import androidx.compose.material.icons.rounded.Bedtime // Added for Sleep Screen
+import androidx.compose.material.icons.rounded.MonitorHeart
+import androidx.compose.material.icons.rounded.Storage
+import androidx.compose.material.icons.rounded.SystemSecurityUpdateGood
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextAlign
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState // Added for hiding bottom bar
+import androidx.navigation.compose.rememberNavController
+import com.samsung.health.mobile.ui.DataScreen
+import com.samsung.health.mobile.ui.InsightsScreen // Added
+import com.samsung.health.mobile.ui.OverviewScreen
+import com.samsung.health.mobile.ui.SleepAnalysisScreen // Added
+import com.samsung.health.mobile.ui.SystemScreen
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -31,90 +39,113 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
+            // Dark Theme by default for a sleek look
             MaterialTheme(colorScheme = darkColorScheme()) {
-                ReceiverScreen(viewModel)
+                MainAppScaffold(viewModel)
             }
         }
     }
 }
 
-@Composable
-fun ReceiverScreen(viewModel: MainViewModel) {
-    val fileSize by viewModel.fileSize.collectAsState()
-    val lastUpdate by viewModel.lastUpdate.collectAsState()
-    val isConnected by viewModel.isConnected.collectAsState()
-    val exportStatus by viewModel.exportStatus.collectAsState()
-    val context = LocalContext.current
+sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
+    object Vitals : Screen("vitals", "Vitals", Icons.Rounded.MonitorHeart)
+    object Insights : Screen("insights", "Insights", Icons.Rounded.Analytics)
+    object Data : Screen("data", "Storage", Icons.Rounded.Storage)
+    object System : Screen("system", "System", Icons.Rounded.SystemSecurityUpdateGood)
 
+    // Non-Tab Route (Hidden from bottom bar)
+    object SleepAnalysis : Screen("sleep_analysis", "Deep Sleep", Icons.Rounded.Bedtime)
+}
+
+@Composable
+fun MainAppScaffold(viewModel: MainViewModel) {
+    val navController = rememberNavController()
+    // Tabs list (excludes SleepAnalysis)
+    val tabs = listOf(Screen.Vitals, Screen.Insights, Screen.Data, Screen.System)
+    var selectedScreen by remember { mutableIntStateOf(0) }
+
+    // Toast logic for export
+    val context = LocalContext.current
+    val exportStatus by viewModel.exportStatus.collectAsState()
     LaunchedEffect(exportStatus) {
         exportStatus?.let {
             if (it != "Exporting...") Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF121212))
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+    Scaffold(
+        bottomBar = {
+            // Logic to HIDE BottomBar on specific screens (like SleepAnalysis)
+            val navBackStackEntry by navController.currentBackStackEntryAsState()
+            val currentRoute = navBackStackEntry?.destination?.route
+
+            if (currentRoute != Screen.SleepAnalysis.route) {
+                NavigationBar {
+                    tabs.forEachIndexed { index, screen ->
+                        NavigationBarItem(
+                            icon = { Icon(screen.icon, contentDescription = screen.label) },
+                            label = { Text(screen.label) },
+                            selected = selectedScreen == index,
+                            onClick = {
+                                selectedScreen = index
+                                navController.navigate(screen.route) {
+                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    ) { innerPadding ->
+        val healthData by viewModel.healthData.collectAsState()
+
+        NavHost(
+            navController = navController,
+            startDestination = Screen.Vitals.route,
+            modifier = Modifier.padding(innerPadding)
+        ) {
+            // Tab 1: Vitals
+            composable(Screen.Vitals.route) {
+                OverviewScreen(data = healthData)
+            }
+
+            // Tab 2: Insights (Updated)
+            composable(Screen.Insights.route) {
+                InsightsScreen(
+                    data = healthData,
+                    onDeepSleepClick = { navController.navigate(Screen.SleepAnalysis.route) }
+                )
+            }
+
+            // Tab 3: Data/Storage
+            composable(Screen.Data.route) {
+                DataScreen(viewModel)
+            }
+
+            // Tab 4: System
+            composable(Screen.System.route) {
+                SystemScreen()
+            }
+
+            // Extra Page: Sleep Analysis (No bottom bar)
+            composable(Screen.SleepAnalysis.route) {
+                SleepAnalysisScreen(
+                    onBack = { navController.popBackStack() }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun PlaceholderScreen(text: String) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
     ) {
-        // 1. Connection Indicator
-        Icon(
-            imageVector = if (isConnected) Icons.Rounded.CheckCircle else Icons.Rounded.Warning,
-            contentDescription = null,
-            tint = if (isConnected) Color(0xFF00B894) else Color(0xFFD63031),
-            modifier = Modifier.size(80.dp)
-        )
-        Spacer(Modifier.height(16.dp))
-        Text(
-            text = if (isConnected) "Watch Connected" else "Waiting for Watch...",
-            color = Color.White,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            text = lastUpdate,
-            color = Color.Gray,
-            fontSize = 14.sp
-        )
-
-        Spacer(Modifier.height(48.dp))
-
-        // 2. Data Volume
-        Text(text = "Total Data Stored", color = Color.Gray, fontSize = 14.sp)
-        Text(
-            text = fileSize,
-            color = Color.White,
-            fontSize = 48.sp,
-            fontWeight = FontWeight.ExtraBold
-        )
-
-        Spacer(Modifier.height(48.dp))
-
-        // 3. Export Button
-        Button(
-            onClick = { viewModel.exportData() },
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0984E3))
-        ) {
-            Icon(Icons.Rounded.Download, null)
-            Spacer(Modifier.width(8.dp))
-            Text("EXPORT CSV TO DOWNLOADS")
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        // 4. Clear Button
-        OutlinedButton(
-            onClick = { viewModel.clearData() },
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFD63031))
-        ) {
-            Icon(Icons.Rounded.Delete, null)
-            Spacer(Modifier.width(8.dp))
-            Text("CLEAR STORAGE")
-        }
+        Text(text, textAlign = TextAlign.Center)
     }
 }

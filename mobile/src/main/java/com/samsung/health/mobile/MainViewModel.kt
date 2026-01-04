@@ -1,3 +1,4 @@
+// --- src/main/java/com/samsung/health/mobile/MainViewModel.kt ---
 package com.samsung.health.mobile
 
 import androidx.lifecycle.ViewModel
@@ -13,9 +14,9 @@ class MainViewModel @Inject constructor(
     private val storageManager: StorageManager
 ) : ViewModel() {
 
+    // --- Tab 3: Storage State ---
     val fileSize = storageManager.fileSize.map { size ->
-        val mb = size / (1024.0 * 1024.0)
-        "%.2f MB".format(mb)
+        "%.2f MB".format(size / (1024.0 * 1024.0))
     }.stateIn(viewModelScope, SharingStarted.Lazily, "0.00 MB")
 
     val lastUpdate = storageManager.lastUpdate.map { ts ->
@@ -23,7 +24,6 @@ class MainViewModel @Inject constructor(
         else "Last Packet: " + java.text.SimpleDateFormat("HH:mm:ss").format(java.util.Date(ts))
     }.stateIn(viewModelScope, SharingStarted.Lazily, "Waiting...")
 
-    // Connection Logic: If we received data < 1 min ago, we are "Connected"
     val isConnected = storageManager.lastUpdate.map { ts ->
         (System.currentTimeMillis() - ts) < 60_000
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
@@ -31,6 +31,12 @@ class MainViewModel @Inject constructor(
     private val _exportStatus = MutableStateFlow<String?>(null)
     val exportStatus = _exportStatus.asStateFlow()
 
+    // --- Tab 1: Live Data State ---
+    // In a real app, you would switch this between Simulated and Real data
+    val healthData: StateFlow<HealthSnapshot> = SimulatedDataProvider.getHealthStream()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HealthSnapshot())
+
+    // --- Actions ---
     fun exportData() {
         viewModelScope.launch {
             _exportStatus.value = "Exporting..."
@@ -40,7 +46,5 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun clearData() {
-        storageManager.clearData()
-    }
+    fun clearData() = storageManager.clearData()
 }

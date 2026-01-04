@@ -62,7 +62,10 @@ dependencies {
     // Wearable Data Layer
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2'
     implementation 'com.google.android.gms:play-services-wearable:19.0.0'
-    implementation("androidx.compose.material:material-icons-extended:<your_compose_version>")
+    implementation("androidx.navigation:navigation-compose:2.7.7")
+
+    // EXTENDED ICONS (Fixes Icons.Rounded.VitalSigns, Analytics, etc.)
+    implementation("androidx.compose.material:material-icons-extended:1.6.3")
     implementation platform('com.google.firebase:firebase-bom:34.4.0')
     implementation 'com.google.firebase:firebase-analytics'
     implementation 'com.google.firebase:firebase-database'
