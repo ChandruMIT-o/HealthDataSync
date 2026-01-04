@@ -39,7 +39,7 @@
         </activity>
 
         <service
-            android:name=".presentation.HealthTrackingService"
+            android:name=".presentation.service.HealthTrackingService"
             android:exported="false"
             android:foregroundServiceType="health" />
     </application>

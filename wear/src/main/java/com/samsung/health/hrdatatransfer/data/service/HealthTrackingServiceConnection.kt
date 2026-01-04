@@ -1,4 +1,4 @@
-package com.samsung.health.hrdatatransfer.data
+package com.samsung.health.hrdatatransfer.data.service
 
 import android.content.Context
 import android.util.Log

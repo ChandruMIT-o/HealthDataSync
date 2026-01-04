@@ -1,4 +1,4 @@
-package com.samsung.health.hrdatatransfer.data
+package com.samsung.health.hrdatatransfer.data.repository
 
 import com.google.android.gms.wearable.Node
 

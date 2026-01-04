@@ -1,23 +1,24 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
-
     id 'org.jetbrains.kotlin.plugin.serialization'
+    id 'org.jetbrains.kotlin.plugin.compose' // Requires Kotlin 2.0+
     id 'com.google.dagger.hilt.android'
     id 'com.google.devtools.ksp'
-    id 'org.jetbrains.kotlin.plugin.compose'
+    id 'kotlin-parcelize'
 }
 
 android {
     namespace 'com.samsung.health.hrdatatransfer'
-    compileSdk 36
+    compileSdk 35
 
     defaultConfig {
         applicationId "com.samsung.health.hrdatatransfer"
-        minSdk 30
-        targetSdk 36
+        minSdk 30 // Wear OS 3.0 standard minimum
+        targetSdk 34 // Stable target for Wear OS 4/5
         versionCode 1
         versionName "1.0"
+
         vectorDrawables {
             useSupportLibrary true
         }
@@ -26,28 +27,26 @@ android {
     buildTypes {
         release {
             minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
-    java {
-        toolchain {
-            languageVersion.set(JavaLanguageVersion.of(8))
-        }
+
+    kotlin {
+        jvmToolchain(17)
     }
-    kotlinOptions {
-        jvmTarget = '1.8'
-    }
+
     buildFeatures {
         compose true
+        buildConfig true
     }
-    composeOptions {
-        kotlinCompilerExtensionVersion '1.5.14'
-    }
-    packagingOptions {
+
+    packaging {
         resources {
             excludes += '/META-INF/{AL2.0,LGPL2.1}'
         }
@@ -55,33 +54,60 @@ android {
 }
 
 dependencies {
-    implementation fileTree(dir: 'libs', include: '*.aar')
-    implementation 'androidx.core:core-ktx:1.16.0'
-    implementation platform('org.jetbrains.kotlin:kotlin-bom:2.0.21')
-    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0'
-    //compose
-    implementation platform('androidx.compose:compose-bom:2025.06.01')
-    implementation 'androidx.compose.ui:ui'
-    implementation "androidx.wear.compose:compose-material:$wear_compose_version"
-    implementation "androidx.wear.compose:compose-foundation:$wear_compose_version"
-    implementation 'androidx.activity:activity-compose:1.10.1'
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.1")
-    implementation 'com.google.android.material:material:1.12.0'
-    // Wearable Data Layer
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2'
+    // --- 1. Core Android & Kotlin ---
+    implementation fileTree(dir: 'libs', include: '*.aar') // CRITICAL: Loads Samsung Health SDK
+    implementation 'androidx.core:core-ktx:1.15.0'
     implementation 'com.google.android.gms:play-services-wearable:19.0.0'
-    // hilt
-    implementation "com.google.dagger:hilt-android:$hilt_version"
-    ksp "com.google.dagger:hilt-compiler:$hilt_version"
-    // permissions
-    implementation 'com.google.accompanist:accompanist-permissions:0.37.3'
-    //tests
-    testImplementation group: 'org.slf4j', name: 'slf4j-simple', version: '2.0.17'
-    testImplementation 'junit:junit:4.13.2'
-    testImplementation "io.mockk:mockk:1.14.4"
-    testImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2"
+
+    // --- 2. Serialization ---
+    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3'
+
+    // --- 3. UI: Jetpack Compose (Wear OS) ---
+    // The BOM manages compatible versions for core compose libraries
+    implementation platform('androidx.compose:compose-bom:2025.01.00')
+    implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.ui:ui-graphics'
+    implementation 'androidx.compose.ui:ui-tooling-preview'
+
+    // Lifecycle utilities
+    implementation "androidx.lifecycle:lifecycle-runtime-compose:2.8.7"
+    implementation 'androidx.activity:activity-compose:1.10.0'
+
+    // WEAR OS Specific UI (Material 3 is key for the new design)
+    // Note: M3 for Wear is still in Alpha/RC but is the standard for new apps
+    implementation "androidx.wear.compose:compose-material3:1.0.0-alpha30"
+    implementation "androidx.wear.compose:compose-foundation:1.4.0"
+    // Core icons (Required for Icons.Filled)
+    implementation "androidx.compose.material:material-icons-core:1.7.6"
+    // Extended icons (If you need rounded/outlined, but we will stick to core for safety)
+    implementation "androidx.compose.material:material-icons-extended:1.7.6"
+
+    // Navigation (Optional but good practice)
+    implementation "androidx.wear.compose:compose-navigation:1.4.0"
+
+    // --- 4. Background & Data Layer ---
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.1'
+    implementation "androidx.wear:wear-ongoing:1.1.0" // For the "Ongoing Activity" icon
+
+    // --- 5. Dependency Injection (Hilt) ---
+    implementation "com.google.dagger:hilt-android:2.55"
+    ksp "com.google.dagger:hilt-compiler:2.55"
+
+    // --- 6. Utilities ---
+    // Permissions handling in Compose
+    implementation 'com.google.accompanist:accompanist-permissions:0.37.0'
+
+    // Math (Keep if you are doing specific signal processing)
     implementation 'org.apache.commons:commons-math3:3.6.1'
-    implementation "androidx.wear:wear-ongoing:1.1.0"
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
-    implementation project(':common')
+
+    // --- 7. Testing ---
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation "io.mockk:mockk:1.13.12"
+    testImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.1"
+
+    // UI Tests
+    androidTestImplementation platform('androidx.compose:compose-bom:2025.01.00')
+    androidTestImplementation 'androidx.compose.ui:ui-test-junit4'
+    debugImplementation 'androidx.compose.ui:ui-tooling'
+    debugImplementation 'androidx.compose.ui:ui-test-manifest'
 }

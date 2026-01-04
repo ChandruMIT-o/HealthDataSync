@@ -22,6 +22,7 @@ import com.samsung.health.hrdatatransfer.presentation.theme.HealthDataTransferTh
 import com.samsung.health.hrdatatransfer.presentation.ui.MainScreen
 import dagger.hilt.android.AndroidEntryPoint
 import android.health.connect.HealthPermissions
+import com.samsung.health.hrdatatransfer.presentation.service.HealthTrackingService
 
 private const val TAG = "MainActivity"
 private const val VERSION_CODE_BAKLAVA = 36 // This seems to be a custom constant, not standard

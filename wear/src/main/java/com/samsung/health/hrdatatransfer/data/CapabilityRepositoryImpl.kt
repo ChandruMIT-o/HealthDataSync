@@ -3,6 +3,7 @@ package com.samsung.health.hrdatatransfer.data
 import android.util.Log
 import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.Node
+import com.samsung.health.hrdatatransfer.data.repository.CapabilityRepository
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton

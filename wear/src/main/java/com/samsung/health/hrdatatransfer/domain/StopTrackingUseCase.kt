@@ -1,6 +1,6 @@
 package com.samsung.health.hrdatatransfer.domain
 
-import com.samsung.health.hrdatatransfer.data.TrackingRepository
+import com.samsung.health.hrdatatransfer.domain.repository.TrackingRepository
 import javax.inject.Inject
 
 class StopTrackingUseCase @Inject constructor(

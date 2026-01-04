@@ -4,7 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.samsung.android.service.health.tracking.HealthTrackerException
-import com.samsung.health.hrdatatransfer.data.HealthDataRecord
+import com.samsung.health.hrdatatransfer.data.model.RawSensorBatch // Import NEW model
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -12,12 +12,10 @@ import javax.inject.Inject
 
 private const val TAG = "MainViewModel"
 
-// --- THIS IS THE NEW UI STATE ---
-// It is derived entirely from TrackingState
 data class UiState(
     val connectionState: ConnectionState = ConnectionState.Disconnected,
     val isTracking: Boolean = false,
-    val latestData: HealthDataRecord? = null,
+    val latestData: RawSensorBatch? = null, // CHANGE HERE
     val connectionException: HealthTrackerException? = null
 )
 
@@ -30,7 +28,6 @@ enum class ConnectionState {
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    // The ONLY dependency is the state holder
     private val trackingStateHolder: TrackingStateHolder
 ) : ViewModel() {
 
@@ -38,10 +35,8 @@ class MainViewModel @Inject constructor(
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
     init {
-        // Observe the singleton state holder and map it to the UI state
         viewModelScope.launch {
             trackingStateHolder.trackingState.collect { trackingState ->
-                Log.d(TAG, "New TrackingState received: $trackingState")
                 _uiState.value = mapTrackingStateToUiState(trackingState)
             }
         }
@@ -62,7 +57,4 @@ class MainViewModel @Inject constructor(
             )
         }
     }
-
-    // ALL OTHER LOGIC IS REMOVED
-    // (setUpTracking, startTracking, stopTracking, sendDataRecord, findPhoneNode...)
 }

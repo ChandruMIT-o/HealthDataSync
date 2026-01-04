@@ -4,21 +4,31 @@ import android.content.Context
 import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.MessageClient
 import com.google.android.gms.wearable.Wearable
-import com.samsung.health.hrdatatransfer.data.*
+
+// --- Interfaces (Domain/Data) ---
+import com.samsung.health.hrdatatransfer.data.repository.CapabilityRepository
+import com.samsung.health.hrdatatransfer.domain.repository.MessageRepository // (Or domain.repository depending on your file structure)
+import com.samsung.health.hrdatatransfer.domain.repository.TrackingRepository
+
+// --- Implementations (Data) - THESE WERE MISSING ---
+import com.samsung.health.hrdatatransfer.data.repository.TrackingRepositoryImpl
+import com.samsung.health.hrdatatransfer.data.repository.MessageRepositoryImpl
+import com.samsung.health.hrdatatransfer.data.CapabilityRepositoryImpl // Check if this is in 'data' or 'data.repository' in your file.
+// If CapabilityRepositoryImpl is in data.repository, use:
+// import com.samsung.health.hrdatatransfer.data.repository.CapabilityRepositoryImpl
+
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-// import kotlinx.coroutines.CoroutineScope // <-- REMOVED
-import kotlinx.coroutines.Dispatchers
-// import kotlinx.coroutines.SupervisorJob // <-- REMOVED
 import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class RepositoryModule {
+
     @Binds
     @Singleton
     abstract fun bindTrackingRepository(impl: TrackingRepositoryImpl): TrackingRepository
@@ -35,14 +45,6 @@ abstract class RepositoryModule {
 @Module
 @InstallIn(SingletonComponent::class)
 object MainModule {
-
-    /* // --- THIS IS NO LONGER NEEDED ---
-    @Provides
-    @Singleton
-    fun provideApplicationCoroutineScope(): CoroutineScope {
-        return CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    }
-    */ // --- END REMOVED BLOCK ---
 
     @Provides
     @Singleton
