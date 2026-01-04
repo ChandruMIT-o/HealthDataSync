@@ -22,10 +22,11 @@ import com.samsung.health.hrdatatransfer.presentation.theme.HealthDataTransferTh
 import com.samsung.health.hrdatatransfer.presentation.ui.MainScreen
 import dagger.hilt.android.AndroidEntryPoint
 import android.health.connect.HealthPermissions
+// ▼▼▼ ADD THIS IMPORT ▼▼▼
 import com.samsung.health.hrdatatransfer.presentation.service.HealthTrackingService
 
 private const val TAG = "MainActivity"
-private const val VERSION_CODE_BAKLAVA = 36 // This seems to be a custom constant, not standard
+private const val VERSION_CODE_BAKLAVA = 36
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -46,11 +47,8 @@ class MainActivity : ComponentActivity() {
                         Log.i(TAG, "All required permissions granted.")
                         permissionDenied = false
 
-                        // ▼▼▼ THIS IS THE FIX ▼▼▼
-                        // Start the service immediately after permissions are granted.
-                        // This will trigger its onCreate() and connectToHealthService().
+                        // Start the service immediately after permissions are granted
                         startService(context, HealthTrackingService.ACTION_PREPARE)
-                        // ▲▲▲ END FIX ▲▲▲
 
                     } else {
                         Log.e(TAG, "Not all permissions were granted by the user.")
@@ -70,7 +68,7 @@ class MainActivity : ComponentActivity() {
                         permissionList.add(Manifest.permission.POST_NOTIFICATIONS)
                     }
 
-                    if (Build.VERSION.SDK_INT >= VERSION_CODE_BAKLAVA) { // Using your custom constant
+                    if (Build.VERSION.SDK_INT >= VERSION_CODE_BAKLAVA) {
                         permissionList.add(HealthPermissions.READ_HEART_RATE)
                     } else {
                         permissionList.add(Manifest.permission.BODY_SENSORS)

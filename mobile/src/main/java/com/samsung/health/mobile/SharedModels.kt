@@ -21,18 +21,3 @@ data class RawSensorBatch(
     val tempTimestamp: Long,
     val skinTemp: FloatArray
 )
-
-object GzipUtils {
-    fun decompress(compressed: ByteArray): String {
-        return try {
-            // 1. Try to decompress
-            val bis = ByteArrayInputStream(compressed)
-            val gis = GZIPInputStream(bis)
-            val br = gis.bufferedReader(StandardCharsets.UTF_8)
-            br.use { it.readText() }
-        } catch (e: Exception) {
-            // 2. If it fails (Not in GZIP format), assume it is just a plain String
-            String(compressed, StandardCharsets.UTF_8)
-        }
-    }
-}
