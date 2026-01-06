@@ -26,7 +26,7 @@ object SimulatedDataProvider {
             counter += 0.1
 
             // --- Tab 1 Simulation ---
-            val currentHr = (70 + 10 * sin(counter * 0.5) + Random.nextInt(-2, 3)).toInt()
+            val currentHr = (80 + 10 * sin(counter * 0.5) + Random.nextInt(-2, 3)).toInt()
             hrBuffer.removeAt(0); hrBuffer.add(currentHr.toFloat())
 
             // Fixed: Explicit Double math for sin()
@@ -36,11 +36,11 @@ object SimulatedDataProvider {
 
             // --- Tab 2 Simulation (Fixed Type Mismatch) ---
             // We calculate in Double, then cast to Float at the end
-            val sqi = (0.7 + 0.2 * sin(counter * 0.1)).coerceIn(0.0, 1.0).toFloat()
-            val psi = (0.4 + 0.3 * sin(counter * 0.15 + 2)).coerceIn(0.0, 1.0).toFloat()
+            val sqi = (0.7 + 0.1 * sin(counter * 0.1)).coerceIn(0.0, 1.0).toFloat()
+            val psi = (0.4 + 0.1 * sin(counter * 0.15 + 2)).coerceIn(0.0, 1.0).toFloat()
             val cvhs = (0.85 + 0.1 * sin(counter * 0.05)).coerceIn(0.0, 1.0).toFloat()
-            val cls = (0.5 + 0.4 * sin(counter * 0.2)).coerceIn(0.0, 1.0).toFloat()
-            val evs = (0.6 + 0.3 * sin(counter * 0.08 + 4)).coerceIn(0.0, 1.0).toFloat()
+            val cls = (0.5 + 0.1 * sin(counter * 0.2)).coerceIn(0.0, 1.0).toFloat()
+            val evs = (0.6 + 0.1 * sin(counter * 0.08 + 4)).coerceIn(0.0, 1.0).toFloat()
 
             // Update buffers
             updateBuffer(sqiBuffer, sqi)
@@ -67,7 +67,7 @@ object SimulatedDataProvider {
                     evs = evs, evsHistory = evsBuffer.toList()
                 )
             )
-            delay(1000)
+            delay(2000)
         }
     }
 

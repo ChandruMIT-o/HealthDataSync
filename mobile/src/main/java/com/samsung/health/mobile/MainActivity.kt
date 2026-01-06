@@ -30,6 +30,7 @@ import com.samsung.health.mobile.ui.InsightsScreen // Added
 import com.samsung.health.mobile.ui.OverviewScreen
 import com.samsung.health.mobile.ui.SleepAnalysisScreen // Added
 import com.samsung.health.mobile.ui.SystemScreen
+import com.samsung.health.mobile.util.PerformanceMonitor
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -38,6 +39,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        PerformanceMonitor.start(applicationContext)
         setContent {
             // Dark Theme by default for a sleek look
             MaterialTheme(colorScheme = darkColorScheme()) {

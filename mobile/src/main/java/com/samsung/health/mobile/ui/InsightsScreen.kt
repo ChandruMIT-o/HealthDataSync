@@ -111,14 +111,14 @@ fun InsightsScreen(data: HealthSnapshot, onDeepSleepClick: () -> Unit) {
             onClick = onDeepSleepClick,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(60.dp),
+                .height(80.dp),
             shape = RoundedCornerShape(20.dp),
             colors = ButtonDefaults.buttonColors(containerColor = DeepSleepPurple)
         ) {
             Icon(Icons.Rounded.NightsStay, null, tint = TextWhite)
             Spacer(Modifier.width(12.dp))
             Column(horizontalAlignment = Alignment.Start) {
-                Text("Deep Sleep Analysis", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text("Deep Sleep Analysis", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TextWhite.copy(0.9f))
                 Text("View hypnogram and stages", fontSize = 12.sp, color = TextWhite.copy(0.7f))
             }
             Spacer(Modifier.weight(1f))
@@ -174,7 +174,7 @@ fun IndexCard(
                     Spacer(Modifier.width(12.dp))
                     Column {
                         Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = TextWhite)
-                        Text("%.2f / 1.0".format(value), style = MaterialTheme.typography.bodySmall, color = TextSubtle)
+                        Text("%.2f / 1.0".format(value), style = MaterialTheme.typography.bodyLarge, color = TextSubtle)
                     }
                 }
 
@@ -204,7 +204,7 @@ fun IndexCard(
                     Divider(color = Color.DarkGray, thickness = 0.5.dp)
                     Spacer(Modifier.height(16.dp))
 
-                    Text(description, style = MaterialTheme.typography.bodySmall, color = TextSubtle)
+                    Text(description, style = MaterialTheme.typography.bodyMedium, color = TextSubtle)
                     Spacer(Modifier.height(16.dp))
 
                     Text("Hourly Trend", style = MaterialTheme.typography.labelSmall, color = TextWhite)

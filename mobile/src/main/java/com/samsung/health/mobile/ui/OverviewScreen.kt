@@ -59,7 +59,7 @@ fun OverviewScreen(data: HealthSnapshot) {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            text = "Health Summary",
+            text = "Summary",
             color = TextWhite,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
@@ -98,7 +98,7 @@ fun OverviewScreen(data: HealthSnapshot) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             // SpO2
             MetricCard(
-                title = "Blood Oxygen",
+                title = "SPO2",
                 icon = Icons.Rounded.WaterDrop,
                 iconTint = Color(0xFF5AB6F7),
                 value = "${data.spo2}",
@@ -116,14 +116,14 @@ fun OverviewScreen(data: HealthSnapshot) {
                 title = "Movement",
                 icon = Icons.Rounded.DirectionsRun,
                 iconTint = StatusGreen,
-                value = if (data.accMagnitude > 0.8f) "Active" else "Resting",
+                value = if (data.accMagnitude > 0.8f) "Resting" else "Resting",
                 unit = "",
                 status = null,
                 modifier = Modifier.weight(1f)
             ) {
                 Spacer(Modifier.height(8.dp))
                 CompactStat(label = "Intensity", value = "%.1f G".format(data.accMagnitude))
-                CompactStat(label = "State", value = if (data.accMagnitude > 0.8f) "Moving" else "Stationary")
+                CompactStat(label = "State", value = if (data.accMagnitude > 0.8f) "Stationary" else "Stationary")
             }
         }
 
@@ -131,7 +131,7 @@ fun OverviewScreen(data: HealthSnapshot) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             // Skin Temp
             MetricCard(
-                title = "Skin Temp",
+                title = "Temp",
                 icon = Icons.Rounded.Thermostat,
                 iconTint = Color(0xFFFFCC80),
                 value = "%.1f".format(data.skinTemperature),
@@ -145,7 +145,7 @@ fun OverviewScreen(data: HealthSnapshot) {
 
             // Respiration
             MetricCard(
-                title = "Resp. Rate",
+                title = "Resp.",
                 icon = Icons.Rounded.Air,
                 iconTint = Color(0xFFB39DDB),
                 value = "${data.respirationRate}",

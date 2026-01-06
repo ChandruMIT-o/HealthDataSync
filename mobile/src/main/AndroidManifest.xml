@@ -11,7 +11,7 @@
     <application
         android:name=".MobileApp"
         android:allowBackup="true"
-        android:icon="@drawable/ic_launcher"
+        android:icon="@mipmap/ic_launcher"
         android:label="Health Receiver"
         android:theme="@android:style/Theme.NoTitleBar">
 
