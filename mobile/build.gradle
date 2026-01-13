@@ -43,6 +43,19 @@ android {
     kotlinOptions {
         jvmTarget = '1.8'
     }
+    testBuildType "release"
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.debug
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    defaultConfig {
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
 }
 
 dependencies {
@@ -72,6 +85,18 @@ dependencies {
     // hilt
     implementation "com.google.dagger:hilt-android:$hilt_version"
     ksp "com.google.dagger:hilt-compiler:$hilt_version"
+
+    // Standard Android Test libraries
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
+
+    // Compose Testing libraries
+    androidTestImplementation "androidx.compose.ui:ui-test-junit4:$compose_version"
+
+    // Needed for running Compose tests; only included in debug builds
+    debugImplementation "androidx.compose.ui:ui-test-manifest:$compose_version"
+
+    implementation 'com.github.wendykierp:JTransforms:3.1'
 
     implementation project(':common')
 }

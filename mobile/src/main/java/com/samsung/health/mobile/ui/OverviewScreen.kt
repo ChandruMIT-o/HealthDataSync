@@ -1,4 +1,3 @@
-// --- src/main/java/com/samsung/health/mobile/ui/OverviewScreen.kt ---
 package com.samsung.health.mobile.ui
 
 import androidx.compose.animation.AnimatedVisibility
@@ -36,7 +35,6 @@ private val SamsungDarkCard = Color(0xFF1C1C1E)
 private val TextWhite = Color(0xFFFAFAFA)
 private val TextSubtle = Color(0xFF9E9E9E)
 
-// Status Colors
 private val StatusGreen = Color(0xFF65D46E)
 private val StatusRed = Color(0xFFFF5252)
 private val StatusOrange = Color(0xFFFFAB40)
@@ -46,9 +44,11 @@ private val StatusBlue = Color(0xFF448AFF)
 fun OverviewScreen(data: HealthSnapshot) {
     val scrollState = rememberScrollState()
 
-    // Dynamic Calculations for "Rest" and "High" based on history
-    val minHr = data.heartRateHistory.minOrNull()?.toInt() ?: 60
-    val maxHr = data.heartRateHistory.maxOrNull()?.toInt() ?: 100
+    // HR Stats
+    val validHrHistory = data.heartRateHistory.filter { it > 0 }
+    val minHr = validHrHistory.minOrNull()?.toInt() ?: 0
+    val maxHr = validHrHistory.maxOrNull()?.toInt() ?: 0
+    val avgHr = if (validHrHistory.isNotEmpty()) validHrHistory.average().toInt() else 0
 
     Column(
         modifier = Modifier
@@ -66,64 +66,70 @@ fun OverviewScreen(data: HealthSnapshot) {
             modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)
         )
 
-        // 1. HEART RATE (Main Card)
+        // 1. HEART RATE
         MetricCard(
             title = "Heart Rate",
             icon = Icons.Rounded.Favorite,
             iconTint = StatusRed,
-            value = "${data.heartRate}",
+            value = if (data.heartRate > 0) "${data.heartRate}" else "--",
             unit = "bpm",
-            status = calculateStatus(data.heartRate.toFloat(), 60f, 100f)
+            status = if (data.heartRate > 0) calculateStatus(data.heartRate.toFloat(), 60f, 100f) else null
         ) {
-            // Stats Row
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                CompactStat(label = "Resting", value = "$minHr")
-                CompactStat(label = "Peak", value = "$maxHr")
-                CompactStat(label = "Avg", value = "${(minHr + maxHr)/2}")
+                CompactStat(label = "Resting", value = if (minHr > 0) "$minHr" else "--")
+                CompactStat(label = "Peak", value = if (maxHr > 0) "$maxHr" else "--")
+                CompactStat(label = "Avg", value = if (avgHr > 0) "$avgHr" else "--")
             }
-            // Graph
             LineChart(
                 points = data.heartRateHistory,
                 color = StatusRed,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp)
+                modifier = Modifier.fillMaxWidth().height(50.dp)
             )
         }
 
         // 2. ROW: SpO2 & Movement
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            // SpO2
+            // SpO2 (Uses persisted 'data.spo2' from Repo)
             MetricCard(
                 title = "SPO2",
                 icon = Icons.Rounded.WaterDrop,
                 iconTint = Color(0xFF5AB6F7),
-                value = "${data.spo2}",
+                value = if (data.spo2 > 0) "${data.spo2}" else "--",
                 unit = "%",
-                status = if (data.spo2 >= 95) Status("Healthy", StatusGreen) else Status("Low", StatusOrange),
+                status = if (data.spo2 > 0) {
+                    if (data.spo2 >= 95) Status("Healthy", StatusGreen) else Status("Low", StatusOrange)
+                } else null,
                 modifier = Modifier.weight(1f)
             ) {
                 Spacer(Modifier.height(8.dp))
-                CompactStat(label = "Daily Avg", value = "97%")
-                CompactStat(label = "Min", value = "94%")
+                // Only show "Measuring..." if value is actually missing (0)
+                val stateText = if (data.spo2 > 0) "Stable" else "Measuring..."
+                CompactStat(label = "State", value = stateText)
             }
 
-            // Movement
+            // Movement (Human Readable)
+            val moveState = when {
+                data.accMagnitude < 0.2f -> "Resting"
+                data.accMagnitude < 0.8f -> "Moving"
+                else -> "Active"
+            }
+            val moveColor = if (moveState == "Resting") StatusBlue else StatusGreen
+
             MetricCard(
                 title = "Movement",
                 icon = Icons.Rounded.DirectionsRun,
-                iconTint = StatusGreen,
-                value = if (data.accMagnitude > 0.8f) "Resting" else "Resting",
+                iconTint = moveColor,
+                value = moveState, // <--- No more G units in main value
                 unit = "",
                 status = null,
                 modifier = Modifier.weight(1f)
             ) {
                 Spacer(Modifier.height(8.dp))
-                CompactStat(label = "Intensity", value = "%.1f G".format(data.accMagnitude))
-                CompactStat(label = "State", value = if (data.accMagnitude > 0.8f) "Stationary" else "Stationary")
+                // Show G value as a small detail
+                CompactStat(label = "Intensity", value = "%.2f G".format(data.accMagnitude))
             }
         }
 
@@ -134,13 +140,13 @@ fun OverviewScreen(data: HealthSnapshot) {
                 title = "Temp",
                 icon = Icons.Rounded.Thermostat,
                 iconTint = Color(0xFFFFCC80),
-                value = "%.1f".format(data.skinTemperature),
+                value = if (data.skinTemperature > 0) "%.1f".format(data.skinTemperature) else "--",
                 unit = "°C",
-                status = calculateStatus(data.skinTemperature, 35.5f, 37.5f),
+                status = if (data.skinTemperature > 0) calculateStatus(data.skinTemperature, 30f, 37.5f) else null,
                 modifier = Modifier.weight(1f)
             ) {
                 Spacer(Modifier.height(8.dp))
-                CompactStat(label = "Baseline", value = "36.6")
+                CompactStat(label = "Range", value = "32 - 36°C")
             }
 
             // Respiration
@@ -148,23 +154,22 @@ fun OverviewScreen(data: HealthSnapshot) {
                 title = "Resp.",
                 icon = Icons.Rounded.Air,
                 iconTint = Color(0xFFB39DDB),
-                value = "${data.respirationRate}",
+                value = if (data.respirationRate > 0) "${data.respirationRate}" else "--",
                 unit = "rpm",
-                status = calculateStatus(data.respirationRate.toFloat(), 12f, 20f),
+                status = if (data.respirationRate > 0) calculateStatus(data.respirationRate.toFloat(), 12f, 20f) else null,
                 modifier = Modifier.weight(1f)
             ) {
                 Spacer(Modifier.height(8.dp))
-                CompactStat(label = "Avg", value = "16 rpm")
+                CompactStat(label = "Avg", value = if (data.respirationRate > 0) "12-20" else "--")
             }
         }
 
-        // 4. ECG CARD (Collapsible)
+        // 4. ECG CARD
         ECGCard(data.ecgSignal)
     }
 }
 
-// --- REUSABLE UI COMPONENTS ---
-
+// ... (Rest of UI components: MetricCard, CompactStat, calculateStatus, ECGCard, etc. remain unchanged)
 @Composable
 fun MetricCard(
     title: String,
@@ -182,24 +187,20 @@ fun MetricCard(
         modifier = modifier
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // HEADER ROW: Icon/Title on Left, Badge on Right
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Left: Icon + Title
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(imageVector = icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(text = title, style = MaterialTheme.typography.bodyMedium, color = TextSubtle, fontWeight = FontWeight.Medium)
                 }
-
-                // Right: Status Badge (Fixed placement)
                 if (status != null) {
                     Surface(
                         color = status.color.copy(alpha = 0.15f),
-                        shape = RoundedCornerShape(8.dp), // Slightly more square for tech look
+                        shape = RoundedCornerShape(8.dp),
                     ) {
                         Text(
                             text = status.label,
@@ -211,21 +212,15 @@ fun MetricCard(
                     }
                 }
             }
-
             Spacer(Modifier.height(8.dp))
-
-            // MAIN VALUE ROW
             Row(verticalAlignment = Alignment.Bottom) {
+                // Main Value Text
                 Text(text = value, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold, color = TextWhite)
-                if (unit.isNotEmpty()) {
+                if (unit.isNotEmpty() && value != "--" && value != "Resting" && value != "Moving" && value != "Active") {
                     Text(text = " $unit", style = MaterialTheme.typography.bodyMedium, color = TextSubtle, modifier = Modifier.padding(bottom = 4.dp, start = 4.dp))
                 }
             }
-
-            // EXTRA CONTENT (Stats / Graphs)
-            if (content != null) {
-                content()
-            }
+            if (content != null) content()
         }
     }
 }
@@ -238,7 +233,6 @@ fun CompactStat(label: String, value: String) {
     }
 }
 
-// --- HELPER LOGIC ---
 data class Status(val label: String, val color: Color)
 
 fun calculateStatus(value: Float, min: Float, max: Float): Status {
@@ -249,7 +243,6 @@ fun calculateStatus(value: Float, min: Float, max: Float): Status {
     }
 }
 
-// --- ECG & GRAPH LOGIC (UNCHANGED) ---
 @Composable
 fun ECGCard(ecgData: List<Float>) {
     var isExpanded by remember { mutableStateOf(false) }
