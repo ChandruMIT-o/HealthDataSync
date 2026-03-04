@@ -30,6 +30,7 @@ fun DataScreen(viewModel: MainViewModel) {
     val fileSize by viewModel.fileSize.collectAsState()
     val lastUpdate by viewModel.lastUpdate.collectAsState()
     val isConnected by viewModel.isConnected.collectAsState()
+    val exportStatus by viewModel.exportStatus.collectAsState() // Observe export status
 
     Column(
         modifier = Modifier
@@ -96,7 +97,7 @@ fun DataScreen(viewModel: MainViewModel) {
                     color = TextWhite
                 )
                 Text(
-                    text = "Total Storage Used",
+                    text = "Total Storage Used (Limit: 100MB)",
                     style = MaterialTheme.typography.labelLarge,
                     color = TextSubtle
                 )
@@ -106,13 +107,34 @@ fun DataScreen(viewModel: MainViewModel) {
         Spacer(Modifier.weight(1f)) // Push buttons to bottom
 
         // --- 3. ACTIONS ---
-        // Export Button (Blue)
-        ActionButton(
-            text = "Export to Downloads",
-            icon = Icons.Rounded.Download,
-            color = ActionBlue,
-            onClick = { viewModel.exportData() }
-        )
+
+        // Export Button (Handles Loading State)
+        val isExporting = exportStatus == "Exporting..."
+
+        Button(
+            onClick = { viewModel.exportData() },
+            modifier = Modifier.fillMaxWidth().height(56.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = ActionBlue,
+                disabledContainerColor = ActionBlue.copy(alpha = 0.5f)
+            ),
+            enabled = exportStatus == null // Disable if exporting or finished recently
+        ) {
+            if (isExporting) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = Color.Black,
+                    strokeWidth = 2.dp
+                )
+                Spacer(Modifier.width(12.dp))
+                Text("Merging & Exporting...", fontWeight = FontWeight.Bold, color = Color.Black)
+            } else {
+                Icon(Icons.Rounded.Download, null, tint = Color.Black)
+                Spacer(Modifier.width(8.dp))
+                Text("Export Full History (.csv)", fontWeight = FontWeight.Bold, color = Color.Black)
+            }
+        }
 
         // Clear Button (Red/Outline)
         OutlinedButton(
@@ -126,19 +148,5 @@ fun DataScreen(viewModel: MainViewModel) {
             Spacer(Modifier.width(8.dp))
             Text("Clear All Data", fontWeight = FontWeight.SemiBold)
         }
-    }
-}
-
-@Composable
-fun ActionButton(text: String, icon: ImageVector, color: Color, onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth().height(56.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = color)
-    ) {
-        Icon(icon, null, tint = Color.Black)
-        Spacer(Modifier.width(8.dp))
-        Text(text, fontWeight = FontWeight.Bold, color = Color.Black)
     }
 }

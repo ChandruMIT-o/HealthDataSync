@@ -13,7 +13,7 @@ android {
     compileSdk 36
 
     defaultConfig {
-        applicationId "com.samsung.health.hrdatatransfer"
+        applicationId "com.mhms.health.mobile"
         minSdk 30
         targetSdk 36
         versionCode 1
@@ -82,6 +82,8 @@ dependencies {
     implementation platform('com.google.firebase:firebase-bom:34.4.0')
     implementation 'com.google.firebase:firebase-analytics'
     implementation 'com.google.firebase:firebase-database'
+    implementation("com.google.firebase:firebase-firestore")
+
     // hilt
     implementation "com.google.dagger:hilt-android:$hilt_version"
     ksp "com.google.dagger:hilt-compiler:$hilt_version"

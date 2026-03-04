@@ -15,6 +15,8 @@ import java.io.FileInputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -22,7 +24,16 @@ import javax.inject.Singleton
 class StorageManager @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
-    private val file = File(context.filesDir, "raw_data.csv")
+    // --- FILE DEFINITIONS ---
+    // 1. Raw Data (High Volume) - Limit 80MB (40MB x 2)
+    private val rawCurrent = File(context.filesDir, "raw_data_current.csv")
+    private val rawBackup = File(context.filesDir, "raw_data_backup.csv")
+    private val MAX_RAW_SIZE = 40 * 1024 * 1024L
+
+    // 2. Processed Data (Low Volume) - Limit 20MB (10MB x 2)
+    private val procCurrent = File(context.filesDir, "processed_data_current.csv")
+    private val procBackup = File(context.filesDir, "processed_data_backup.csv")
+    private val MAX_PROC_SIZE = 10 * 1024 * 1024L
 
     private val _fileSize = MutableStateFlow(0L)
     val fileSize = _fileSize.asStateFlow()
@@ -30,89 +41,127 @@ class StorageManager @Inject constructor(
     private val _lastUpdate = MutableStateFlow(0L)
     val lastUpdate = _lastUpdate.asStateFlow()
 
+    // Headers
+    private val RAW_HEADER = "BatchID,Time,DurationMs,Green_Arr,Red_Arr,IR_Arr,AccX,AccY,AccZ,Temp_Arr\n"
+    private val PROC_HEADER = "Timestamp,Time_UTC,HR_Arr,SpO2_Arr,RR_Arr,Mov_Arr,Temp_Arr,IBI_Stream\n"
+
     init {
-        updateFileSize()
-        if (!file.exists()) {
-            // UPDATED HEADER: Added Red, IR, AccY, AccZ columns
-            file.writeText("BatchID_Epoch,Time,DurationMs,PPG_Count,ACC_Count,Temp_Count,PPG_Green_Arr,PPG_Red_Arr,PPG_IR_Arr,ACC_X_Arr,ACC_Y_Arr,ACC_Z_Arr,Temp_Arr\n")
-        }
+        ensureHeader(rawCurrent, RAW_HEADER)
+        ensureHeader(procCurrent, PROC_HEADER)
+        updateTotalSize()
     }
 
-    suspend fun saveBatch(batch: RawSensorBatch) = withContext(Dispatchers.IO) {
+    // --- SAVING RAW DATA ---
+    suspend fun saveRawBatch(batch: RawSensorBatch) = withContext(Dispatchers.IO) {
         try {
+            rotateFile(rawCurrent, rawBackup, MAX_RAW_SIZE, RAW_HEADER)
             val dateStr = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(batch.batchId))
-            val sb = StringBuilder()
 
-            // 1. Metadata
+            val sb = StringBuilder()
             sb.append("${batch.batchId},")
             sb.append("$dateStr,")
             sb.append("${batch.durationMs},")
+            sb.append("\"${batch.ppgGreen.joinToString(";")}\",")
+            sb.append("\"${batch.ppgRed.joinToString(";")}\",")
+            sb.append("\"${batch.ppgIr.joinToString(";")}\",")
+            sb.append("\"${batch.accX.joinToString(";")}\",")
+            sb.append("\"${batch.accY.joinToString(";")}\",")
+            sb.append("\"${batch.accZ.joinToString(";")}\",")
+            sb.append("\"${batch.skinTemp.joinToString(";")}\"\n")
 
-            // 2. Data Counts (Length of arrays)
-            sb.append("${batch.ppgGreen.size},")
-            sb.append("${batch.accX.size},")
-            sb.append("${batch.skinTemp.size},")
-
-            // 3. PPG Data (Green, Red, IR)
-            sb.append("\"[${batch.ppgGreen.joinToString(";")}]\",")
-            sb.append("\"[${batch.ppgRed.joinToString(";")}]\",")   // <--- ADDED
-            sb.append("\"[${batch.ppgIr.joinToString(";")}]\",")    // <--- ADDED
-
-            // 4. Accelerometer Data (X, Y, Z)
-            sb.append("\"[${batch.accX.joinToString(";")}]\",")
-            sb.append("\"[${batch.accY.joinToString(";")}]\",")     // <--- ADDED
-            sb.append("\"[${batch.accZ.joinToString(";")}]\",")     // <--- ADDED
-
-            // 5. Temperature Data
-            sb.append("\"[${batch.skinTemp.joinToString(";")}]\"\n")
-
-            file.appendText(sb.toString())
-            updateFileSize()
+            rawCurrent.appendText(sb.toString())
+            updateTotalSize()
             _lastUpdate.value = System.currentTimeMillis()
         } catch (e: Exception) {
-            Log.e("StorageManager", "Failed to save batch", e)
+            Log.e("StorageManager", "Failed to save RAW batch", e)
         }
     }
 
-    suspend fun exportToDownloads(): String = withContext(Dispatchers.IO) {
-        if (!file.exists() || file.length() == 0L) return@withContext "No data to export"
+    // --- SAVING PROCESSED DATA ---
+    suspend fun saveProcessedBatch(batch: MinuteBatch) = withContext(Dispatchers.IO) {
+        try {
+            rotateFile(procCurrent, procBackup, MAX_PROC_SIZE, PROC_HEADER)
+            val dateStr = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(batch.startTimestamp))
 
+            val sb = StringBuilder()
+            sb.append("${batch.startTimestamp},")
+            sb.append("$dateStr,")
+            sb.append("\"${batch.hrValues}\",")
+            sb.append("\"${batch.spo2Values}\",")
+            sb.append("\"${batch.rrValues}\",")
+            sb.append("\"${batch.movementValues}\",")
+            sb.append("\"${batch.tempValues}\",")
+            sb.append("\"${batch.ibiStream}\"\n")
+
+            procCurrent.appendText(sb.toString())
+            updateTotalSize()
+        } catch (e: Exception) {
+            Log.e("StorageManager", "Failed to save PROC batch", e)
+        }
+    }
+
+    // --- EXPORT (ZIPS EVERYTHING) ---
+    suspend fun exportToDownloads(): String = withContext(Dispatchers.IO) {
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val fileName = "HealthData_$timestamp.csv"
+        val fileName = "HealthData_$timestamp.zip" // Export as ZIP now
 
         try {
             val contentValues = ContentValues().apply {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-                put(MediaStore.MediaColumns.MIME_TYPE, "text/csv")
+                put(MediaStore.MediaColumns.MIME_TYPE, "application/zip")
                 put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
             }
-
-            val resolver = context.contentResolver
-            val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+            val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
                 ?: return@withContext "Failed to create file"
 
-            resolver.openOutputStream(uri).use { output ->
-                FileInputStream(file).use { input ->
-                    input.copyTo(output!!)
+            context.contentResolver.openOutputStream(uri).use { os ->
+                ZipOutputStream(os).use { zos ->
+                    // Helper to add file to zip
+                    fun addFile(file: File, name: String) {
+                        if (file.exists() && file.length() > 0) {
+                            zos.putNextEntry(ZipEntry(name))
+                            FileInputStream(file).use { it.copyTo(zos) }
+                            zos.closeEntry()
+                        }
+                    }
+                    addFile(rawBackup, "raw_data_part1.csv")
+                    addFile(rawCurrent, "raw_data_part2.csv")
+                    addFile(procBackup, "processed_metrics_part1.csv")
+                    addFile(procCurrent, "processed_metrics_part2.csv")
                 }
             }
-
-            return@withContext "Saved to Downloads/$fileName"
+            return@withContext "Saved ZIP to Downloads"
         } catch (e: Exception) {
-            return@withContext "Export Error: ${e.message}"
+            return@withContext "Export Failed: ${e.message}"
         }
     }
 
     fun clearData() {
-        if (file.exists()) file.delete()
-        updateFileSize()
-        // Re-create the header immediately after clearing, so the file is ready for new data
-        if (!file.exists()) {
-            file.writeText("BatchID_Epoch,Time,DurationMs,PPG_Count,ACC_Count,Temp_Count,PPG_Green_Arr,PPG_Red_Arr,PPG_IR_Arr,ACC_X_Arr,ACC_Y_Arr,ACC_Z_Arr,Temp_Arr\n")
+        rawCurrent.delete(); rawBackup.delete()
+        procCurrent.delete(); procBackup.delete()
+        ensureHeader(rawCurrent, RAW_HEADER)
+        ensureHeader(procCurrent, PROC_HEADER)
+        updateTotalSize()
+    }
+
+    // --- UTILS ---
+    private fun rotateFile(current: File, backup: File, limit: Long, header: String) {
+        if (current.length() > limit) {
+            if (backup.exists()) backup.delete()
+            current.renameTo(backup)
+            ensureHeader(current, header)
         }
     }
 
-    private fun updateFileSize() {
-        _fileSize.value = if (file.exists()) file.length() else 0L
+    private fun ensureHeader(file: File, header: String) {
+        if (!file.exists()) file.writeText(header)
+    }
+
+    private fun updateTotalSize() {
+        val size = (if(rawCurrent.exists()) rawCurrent.length() else 0) +
+                (if(rawBackup.exists()) rawBackup.length() else 0) +
+                (if(procCurrent.exists()) procCurrent.length() else 0) +
+                (if(procBackup.exists()) procBackup.length() else 0)
+        _fileSize.value = size
     }
 }

@@ -48,3 +48,21 @@ data class HealthSnapshot(
     val evs: Float = 0f, // Emotional Vitality
     val evsHistory: List<Float> = emptyList()
 )
+
+// In SharedModels.kt
+data class MinuteBatch(
+    val startTimestamp: Long,      // The epoch ms when this minute started
+
+    // The Time Axis (X-Axis) - This was missing!
+    val timestamps: List<Long>,
+
+    // The Data Axes (Y-Axes) - Full Resolution Arrays
+    val hrValues: List<Double>,
+    val spo2Values: List<Double>,
+    val rrValues: List<Double>,
+    val movementValues: List<Double>,
+    val tempValues: List<Double>,
+
+    // Flattened IBI stream
+    val ibiStream: List<Double>
+)

@@ -16,7 +16,7 @@ import javax.inject.Inject
 class DataReceiverService : WearableListenerService() {
 
     @Inject lateinit var storageManager: StorageManager
-    @Inject lateinit var repository: HealthDataRepository // <--- INJECT REPO
+    @Inject lateinit var repository: HealthDataRepository
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -30,14 +30,17 @@ class DataReceiverService : WearableListenerService() {
                     val jsonString = GzipUtils.decompress(event.data)
                     val batch = Json.decodeFromString<RawSensorBatch>(jsonString)
 
-                    // 1. Save to CSV (Archive)
-                    storageManager.saveBatch(batch)
+                    // 1. SAVE RAW DATA (Backup/Validation)
+                    // Saves to "raw_data_current.csv" (Limit 80MB)
+                    storageManager.saveRawBatch(batch)
+
                     PerformanceMonitor.logPacket(packetSize, batch.batchId)
 
-                    // 2. Process for Live UI (Realtime Pipeline)
+                    // 2. SEND TO PIPELINE
+                    // Processes for UI and saves clean Minute Batches (Limit 20MB)
                     repository.processAndQueueBatch(batch)
 
-                    Log.d("Receiver", "✅ Batch ${batch.batchId} saved & queued for UI.")
+                    Log.d("Receiver", "✅ Batch ${batch.batchId} saved raw & queued for processing.")
 
                 } catch (e: Exception) {
                     Log.e("Receiver", "❌ Processing failed: ${e.message}")

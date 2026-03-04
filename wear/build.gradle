@@ -13,7 +13,7 @@ android {
     compileSdk 35
 
     defaultConfig {
-        applicationId "com.samsung.health.hrdatatransfer"
+        applicationId "com.mhms.health.mobile"
         minSdk 30 // Wear OS 3.0 standard minimum
         targetSdk 34 // Stable target for Wear OS 4/5
         versionCode 1

@@ -13,20 +13,20 @@ import com.samsung.android.service.health.tracking.data.HealthTrackerType
 import com.samsung.health.hrdatatransfer.NOTIFICATION_CHANNEL_ID
 import com.samsung.health.hrdatatransfer.R
 import com.samsung.health.hrdatatransfer.data.model.RawSensorBatch
-import com.samsung.health.hrdatatransfer.domain.repository.MessageRepository
 import com.samsung.health.hrdatatransfer.data.repository.CapabilityRepository
 import com.samsung.health.hrdatatransfer.data.service.ConnectionMessage
 import com.samsung.health.hrdatatransfer.data.service.HealthTrackingServiceConnection
+import com.samsung.health.hrdatatransfer.domain.repository.MessageRepository
 import com.samsung.health.hrdatatransfer.domain.repository.TrackingRepository
 import com.samsung.health.hrdatatransfer.presentation.TrackingState
 import com.samsung.health.hrdatatransfer.presentation.TrackingStateHolder
 import com.samsung.health.hrdatatransfer.util.GzipUtils
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import javax.inject.Inject
 
 private const val TAG = "HealthTrackingService"
 private const val NOTIFICATION_ID = 1
@@ -67,13 +67,13 @@ class HealthTrackingService : Service() {
         super.onCreate()
         Log.i(TAG, "Service Created. Initializing WakeLock and Connection.")
         try {
-            val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+            val powerManager = getSystemService(POWER_SERVICE) as PowerManager
             wakeLock = powerManager.newWakeLock(
                 PowerManager.PARTIAL_WAKE_LOCK,
                 "HealthTracking::RawDataWakeLock"
             ).apply {
                 setReferenceCounted(false)
-                acquire()
+                acquire(10 * 60 * 1000L) // 10 minutes
             }
             Log.i(TAG, "WakeLock acquired.")
         } catch (e: Exception) {
@@ -261,13 +261,15 @@ class HealthTrackingService : Service() {
     }
 
     private fun createNotification(): Notification {
-        return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+        val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setContentTitle("MHMS Active")
             .setContentText("Recording High-Res Sensor Data...")
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setOngoing(true)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .build()
+
+        notification.flags = notification.flags or Notification.FLAG_ONGOING_EVENT
+        return notification
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
